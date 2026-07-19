@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Admin Dashboard — WorkerReview</title>
+  <link rel="stylesheet" href="css/style.css">
+      <link rel="stylesheet" href="css/black-red-theme-override.css"/><link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"></head>
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+ 
+  <button id="menuToggle" class="mobile-menu-btn">
+      ☰
+  </button>
+
+  <div class="navbar-brand"><div class="logo-icon"><i class="bi bi-gear-fill"></i></div><span>Admin Panel</span></div>
+  <div class="navbar-actions">
+    <span class="badge badge-gray"  id="admin-username"></span>
+    <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+<aside id="sidebar" class="sidebar">
+    <div class="sidebar-section">Platform</div>
+    <ul class="sidebar-nav">
+      <li><a href="#" class="active" onclick="showTab('overview',this)"><span class="nav-icon"> <i class="bi bi-grid-1x2-fill"></i></span> Overview</a></li>
+      <li><a href="#" onclick="showTab('stores',this)"><span class="nav-icon"><i class="bi bi-shop"></i></span> Stores</a></li>
+      <li><a href="#" onclick="showTab('reviews',this)"><span class="nav-icon"> <i class="bi bi-chat-left-text-fill"></i></span> All Reviews</a></li>
+    </ul>
+    <div class="sidebar-section">Admin Accounts</div>
+    <ul class="sidebar-nav">
+      <li><a href="#" onclick="showTab('admins',this)"><span class="nav-icon"><i class="bi bi-person-gear"></i></span> Manage Admins</a></li>
+    </ul>
+  </aside>
+
+  <div id="overlay" class="overlay"></div>
+
+  <main class="main-content">
+    <div id="alert-area"></div>
+
+    <!-- OVERVIEW TAB -->
+    <div id="tab-overview">
+      <div class="page-header">
+        <div><h1 class="page-title">Platform Overview</h1><p class="page-subtitle">All stores and reviews at a glance</p></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon"><i class="bi bi-shop"></i></div><div class="stat-value" id="s-stores">—</div><div class="stat-label">Total Stores</div></div>
+        <div class="stat-card primary"><div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div><div class="stat-value" id="s-active">—</div><div class="stat-label">Active Stores</div></div>
+        <div class="stat-card primary"><div class="stat-icon"><i class="bi bi-x-circle-fill"></i></div><div class="stat-value" id="s-disabled">—</div><div class="stat-label">Disabled</div></div>
+        <div class="stat-card primary"><div class="stat-icon"><i class="bi bi-chat-square-text-fill"></i></div><div class="stat-value" id="s-reviews">—</div><div class="stat-label">Total Reviews</div></div>
+        <div class="stat-card primary"><div class="stat-icon"><i class="bi bi-hand-thumbs-up-fill"></i></div><div class="stat-value" id="s-good">—</div><div class="stat-label">Good Reviews</div></div>
+        <div class="stat-card primary"><div class="stat-icon"><i class="bi bi-hand-thumbs-down-fill"></i></div><div class="stat-value" id="s-bad">—</div><div class="stat-label">Bad Reviews</div></div>
+        <div class="stat-card primary"><div class="stat-icon"><i class="bi bi-people-fill"></i></div><div class="stat-value" id="s-workers">—</div><div class="stat-label">Active Workers</div></div>
+        <div class="stat-card"><div class="stat-icon"><i class="bi bi-person-gear"></i></div><div class="stat-value" id="s-admins">—</div><div class="stat-label">Admin Accounts</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="card"><div class="card-title">Review Distribution</div><div class="chart-wrapper"><canvas id="adminPieChart"></canvas></div></div>
+        <div class="card"><div class="card-title">Stores Status</div><div class="chart-wrapper"><canvas id="adminBarChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- STORES TAB -->
+    <div id="tab-stores" class="hidden">
+      <div class="page-header">
+        <div><h1 class="page-title">Manage Stores</h1><p class="page-subtitle">Create stores and manage access</p></div>
+        <button class="btn btn-primary" onclick="openAddStoreModal()">+ Add Store</button>
+      </div>
+      <div class="card">
+        <div id="stores-list"><div class="loading-state"><div class="spinner spinner-dark"></div><p>Loading stores...</p></div></div>
+      </div>
+    </div>
+
+    <!-- REVIEWS TAB -->
+    <div id="tab-reviews" class="hidden">
+      <div class="page-header"><h1 class="page-title">Review Moderation</h1></div>
+      <div class="filter-bar">
+        <select id="admin-filter-store" onchange="loadAdminReviews()"><option value="">All Stores</option></select>
+        <select id="admin-filter-type" onchange="loadAdminReviews()"><option value="">All Types</option><option value="good"><i class="bi bi-hand-thumbs-up-fill"></i> Good</option><option value="bad">Bad</option></select>
+        <button class="btn btn-outline btn-sm" onclick="clearAdminFilters()">Clear</button>
+      </div>
+      <div class="card">
+        <div id="admin-reviews-list"><div class="loading-state"><div class="spinner spinner-dark"></div><p>Loading...</p></div></div>
+        <div id="admin-reviews-pagination" style="text-align:center;padding-top:16px;"></div>
+      </div>
+    </div>
+
+    <!-- ADMINS TAB -->
+    <div id="tab-admins" class="hidden">
+      <div class="page-header">
+        <div><h1 class="page-title">Admin Accounts</h1><p class="page-subtitle">Manage who has admin access to this panel</p></div>
+        <button class="btn btn-primary" onclick="openAddAdminModal()">+ Add Admin</button>
+      </div>
+      <div class="card">
+        <div class="alert alert-info" style="margin-bottom:16px;">
+          <i class="bi bi-info-circle-fill"></i> <strong> Super Admin</strong> is the original admin (you). Only super admin can delete other admin accounts. All admins can manage stores and reviews.
+        </div>
+        <div id="admins-list"><div class="loading-state"><div class="spinner spinner-dark"></div><p>Loading admins...</p></div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Add Store Modal -->
+<div id="add-store-modal" class="modal-overlay hidden" onclick="closeModalOutside(event,'add-store-modal')">
+  <div class="modal">
+    <div class="modal-title"><span>Add New Store</span><button class="modal-close" onclick="closeModal('add-store-modal')">✕</button></div>
+    <div id="store-modal-alert"></div>
+    <form onsubmit="createStore(event)">
+      <div style="background:var(--gray-100);padding:10px 12px;border-radius:var(--radius);font-size:.85rem;color:var(--gray-700);margin-bottom:16px;">
+        <i class="bi bi-info-circle-fill"></i> A QR code and owner login will be created automatically.
+      </div>
+      <div style="font-weight:700;font-size:.82rem;color:var(--primary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Store Details</div>
+      <div class="form-group"><label class="form-label">Store Name *</label><input type="text" id="new-store-name" class="form-control" placeholder="e.g. Coffee Palace" required maxlength="200"/></div>
+      <div class="form-group"><label class="form-label">Store Address</label><input type="text" id="new-store-address" class="form-control" placeholder="123 Main Street, City" maxlength="500"/></div>
+      <div style="font-weight:700;font-size:.82rem;color:var(--primary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;margin-top:8px;">Owner Login Credentials</div>
+      <div class="form-group"><label class="form-label">Owner Username *</label><input type="text" id="new-owner-username" class="form-control" placeholder="e.g. coffeepalace_owner" required maxlength="100"/></div>
+      <div class="form-group"><label class="form-label">Owner Password *</label><input type="password" id="new-owner-password" class="form-control" placeholder="Min 6 characters" required minlength="6" maxlength="100"/></div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('add-store-modal')" style="flex:1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="create-store-btn" style="flex:1;">Create Store</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Store Created Success Modal -->
+<div id="store-success-modal" class="modal-overlay hidden">
+  <div class="modal" style="text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:12px;"><i class="bi bi-check-circle-fill"></i></div>
+    <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:8px;">Store Created!</h2>
+    <p style="color:var(--gray-500);font-size:.9rem;margin-bottom:20px;">Save these credentials — the owner needs them to login.</p>
+    <div style="background:var(--gray-100);border-radius:var(--radius);padding:16px;text-align:left;margin-bottom:16px;">
+      <div style="font-size:.82rem;color:var(--gray-500);">Store Name</div><div id="created-store-name" style="font-weight:700;margin-bottom:10px;"></div>
+      <div style="font-size:.82rem;color:var(--gray-500);">Owner Username</div><div id="created-owner-username" style="font-weight:700;font-family:monospace;margin-bottom:10px;"></div>
+      <div style="font-size:.82rem;color:var(--gray-500);">Review URL</div><div id="created-qr-url" style="font-size:.8rem;word-break:break-all;color:var(--primary);"></div>
+    </div>
+    <div style="background:var(--warning-light);border-radius:var(--radius);padding:10px 14px;font-size:.82rem;color:#92400E;margin-bottom:20px;text-align:left;">
+      <i class="bi bi-exclamation-triangle-fill"></i> <strong>Important:</strong> Share the owner credentials with the store owner securely. The QR code is under Stores → <i class="bi bi-phone-fill"></i> QR button.
+    </div>
+    <button class="btn btn-primary btn-full" onclick="closeModal('store-success-modal');loadStores();">Got it!</button>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div id="qr-modal" class="modal-overlay hidden" onclick="closeModalOutside(event,'qr-modal')">
+  <div class="modal" style="text-align:center;max-width:340px;">
+    <div class="modal-title"><span>Store QR Code</span><button class="modal-close" onclick="closeModal('qr-modal')">✕</button></div>
+    <div id="qr-modal-content"></div>
+    <button class="btn btn-primary mt-2 btn-full" onclick="printQRFromModal()"><i class="bi bi-printer"></i> Print QR Code</button>
+  </div>
+</div>
+
+<!-- Add Admin Modal -->
+<div id="add-admin-modal" class="modal-overlay hidden" onclick="closeModalOutside(event,'add-admin-modal')">
+  <div class="modal">
+    <div class="modal-title"><span>Add Admin Account</span><button class="modal-close" onclick="closeModal('add-admin-modal')">✕</button></div>
+    <div id="admin-modal-alert"></div>
+    <div class="alert alert-info" style="margin-bottom:16px;">
+      The new admin will have full access to manage stores and reviews. Only the super admin can delete admin accounts.
+    </div>
+    <form onsubmit="createAdmin(event)">
+      <div class="form-group">
+        <label class="form-label">Username *</label>
+        <input type="text" id="new-admin-username" class="form-control" placeholder="e.g. admin2" required minlength="3" maxlength="100"/>
+        <p style="font-size:.78rem;color:var(--gray-500);margin-top:4px;">Min 3 characters. Cannot be same as any store owner username.</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <input type="password" id="new-admin-password" class="form-control" placeholder="Min 6 characters" required minlength="6" maxlength="100"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password *</label>
+        <input type="password" id="new-admin-password2" class="form-control" placeholder="Repeat password" required minlength="6" maxlength="100"/>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('add-admin-modal')" style="flex:1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="create-admin-btn" style="flex:1;">Create Admin</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div id="change-pass-modal" class="modal-overlay hidden" onclick="closeModalOutside(event,'change-pass-modal')">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title"><span>Change Password</span><button class="modal-close" onclick="closeModal('change-pass-modal')">✕</button></div>
+    <div id="change-pass-alert"></div>
+    <p style="color:var(--gray-500);font-size:.9rem;margin-bottom:16px;">Changing password for: <strong id="change-pass-username"></strong></p>
+    <input type="hidden" id="change-pass-admin-id"/>
+    <form onsubmit="submitChangePassword(event)">
+      <div class="form-group">
+        <label class="form-label">New Password *</label>
+        <input type="password" id="new-pass-input" class="form-control" placeholder="Min 6 characters" required minlength="6"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm New Password *</label>
+        <input type="password" id="new-pass-input2" class="form-control" placeholder="Repeat new password" required minlength="6"/>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('change-pass-modal')" style="flex:1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="change-pass-btn" style="flex:1;">Change Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/admin.js"></script>
+
+<script>
+window.addEventListener("load", function() {
+
+    const menuBtn = document.getElementById("menuToggle");
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("overlay");
+
+    console.log("Menu:", menuBtn);
+    console.log("Sidebar:", sidebar);
+    console.log("Overlay:", overlay);
+
+    if(menuBtn && sidebar && overlay){
+
+        menuBtn.addEventListener("click", function() {
+
+            sidebar.classList.toggle("active");
+            overlay.classList.toggle("active");
+
+            console.log("Menu clicked");
+        });
+
+        overlay.addEventListener("click", function() {
+
+            sidebar.classList.remove("active");
+            overlay.classList.remove("active");
+        });
+
+    }
+
+});
+</script>
+
+<!-- Subscription Modal -->
+<div id="sub-modal" class="modal-overlay hidden" onclick="closeModalOutside(event,'sub-modal')">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-title">
+      <span><i class="bi bi-calendar-date-fill"></i> Manage Subscription</span>
+      <button class="modal-close" onclick="closeModal('sub-modal')">✕</button>
+    </div>
+    <div id="sub-modal-alert"></div>
+
+    <p style="font-weight:700;font-size:1rem;margin-bottom:6px;" id="sub-store-name"></p>
+    <div id="sub-current-info" style="background:var(--gray-100);padding:10px 14px;border-radius:var(--radius);font-size:.875rem;color:var(--gray-700);margin-bottom:20px;"></div>
+    <input type="hidden" id="sub-store-id"/>
+
+    <form onsubmit="submitSubscription(event)">
+      <div class="form-group">
+        <label class="form-label">Subscription Duration (days) *</label>
+        <input type="number" id="sub-days" class="form-control"
+          min="1" max="3650" value="30"
+          placeholder="e.g. 30, 90, 365" required/>
+        <p style="font-size:.78rem;color:var(--gray-500);margin-top:4px;">
+          Common: 30 = 1 month &nbsp;|&nbsp; 90 = 3 months &nbsp;|&nbsp; 365 = 1 year
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Start counting from</label>
+        <select id="sub-extend-from" class="form-control">
+          <option value="today">Today (reset subscription)</option>
+          <option value="current_end">Current expiry date (extend without gap)</option>
+        </select>
+        <p style="font-size:.78rem;color:var(--gray-500);margin-top:4px;">
+          Use <strong>"Current expiry date"</strong> to extend before it expires (no gap in service).
+        </p>
+      </div>
+
+      <!-- Preview -->
+      <div style="background:var(--primary-light);border-radius:var(--radius);padding:12px 14px;margin-bottom:20px;font-size:.875rem;">
+        <strong>New expiry will be:</strong>
+        <span id="sub-preview" style="color:var(--primary-dark);font-weight:700;"></span>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('sub-modal')" style="flex:1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="sub-save-btn" style="flex:1;">Save Subscription</button>
+      </div>
+
+      <div style="font-weight:700;font-size:.82rem;color:var(--primary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;margin-top:8px;">Subscription</div>
+<div class="form-group">
+  <label class="form-label">Subscription Duration (days) *</label>
+  <input type="number" id="new-sub-days" class="form-control"
+    min="1" max="3650" value="30" required/>
+  <p style="font-size:.78rem;color:var(--gray-500);margin-top:4px;">
+    30 = 1 month &nbsp;|&nbsp; 90 = 3 months &nbsp;|&nbsp; 365 = 1 year
+  </p>
+</div>
+
+    </form>
+  </div>
+</div>
+
+
+
+<!-- Send Notification Modal -->
+<div id="notif-modal" class="modal-overlay hidden" onclick="closeModalOutside(event,'notif-modal')">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-title">
+      <span><i class="bi bi-envelope-fill"></i> Send Notification</span>
+      <button class="modal-close" onclick="closeModal('notif-modal')">✕</button>
+    </div>
+    <div id="notif-modal-alert"></div>
+
+    <p style="color:var(--gray-500);font-size:.875rem;margin-bottom:16px;">
+      Sending to: <strong id="notif-store-name" style="color:var(--dark);"></strong>
+    </p>
+    <input type="hidden" id="notif-store-id"/>
+
+    <form onsubmit="submitNotification(event)">
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select id="notif-type" class="form-control">
+          <option value="admin_message">📢 General Message</option>
+          <option value="subscription_warning">⚠️ Subscription Warning</option>
+          <option value="system">🔧 System Notice</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input type="text" id="notif-title" class="form-control"
+          placeholder="e.g. Subscription ending soon" required maxlength="200"/>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Message *</label>
+        <textarea id="notif-message" class="form-control"
+          placeholder="Write your message to the store owner..."
+          rows="4" required maxlength="1000"></textarea>
+        <p style="font-size:.75rem;color:var(--gray-500);margin-top:4px;">
+          <span id="notif-char-count">0</span>/1000
+        </p>
+      </div>
+
+      <!-- Quick templates -->
+      <div style="margin-bottom:16px;">
+        <p style="font-size:.8rem;font-weight:600;color:var(--gray-500);margin-bottom:8px;">QUICK TEMPLATES</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-outline btn-sm"
+            onclick="useTemplate('subscription_warning','⚠️ Subscription Ending Soon','Your subscription is ending soon. Please contact us to renew and avoid any interruption to your store services.')">
+            <i class="bi bi-exclamation-triangle-fill"></i> Expiry Warning
+          </button>
+          <button type="button" class="btn btn-outline btn-sm"
+            onclick="useTemplate('admin_message','🎉 Thank You!','Thank you for being a valued customer. We appreciate your continued trust in WorkerReview.')">
+            <i class="bi bi-check-circle-fill"></i> Thank You
+          </button>
+          <button type="button" class="btn btn-outline btn-sm"
+            onclick="useTemplate('system','🔧 Scheduled Maintenance','We will be performing scheduled maintenance. Services may be briefly unavailable. We apologize for any inconvenience.')">
+            <i class="bi bi-gear-fill"> Maintenance</i>
+          </button>
+          <button type="button" class="btn btn-outline btn-sm"
+            onclick="useTemplate('admin_message','💳 Payment Reminder','This is a reminder that your subscription payment is due. Please contact admin to process your renewal.')">
+            <i class="bi bi-credit-card-fill"></i> Payment Due
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('notif-modal')" style="flex:1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="send-notif-btn" style="flex:1;"><i class="bi bi-envelope-fill"></i> Send Notification</button>
+      </div>
+
+
+    </form>
+  </div>
+</div>
+
+<!-- View Store Notifications Modal (admin side) -->
+<div id="view-notif-modal" class="modal-overlay hidden"
+     onclick="closeModalOutside(event,'view-notif-modal')">
+
+  <div class="modal" style="max-width:700px;">
+
+    <div class="modal-title">
+      <span>
+        <i class="bi bi-bell-fill"></i>
+        Notifications —
+        <span id="view-notif-store-name"></span>
+      </span>
+
+      <button class="modal-close"
+              onclick="closeModal('view-notif-modal')">
+        ✕
+      </button>
+    </div>
+
+    <div id="view-notif-list">
+      <div class="loading-state">
+        <div class="spinner spinner-dark"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Confirm Action Modal -->
+<div id="confirm-modal"
+     class="modal-overlay hidden"
+     onclick="closeModalOutside(event,'confirm-modal')">
+
+  <div class="modal" style="max-width:500px;">
+
+    <div class="modal-title">
+      <span id="confirm-title">Confirm Action</span>
+
+      <button class="modal-close"
+              onclick="closeModal('confirm-modal')">
+        ✕
+      </button>
+    </div>
+
+    <div id="confirm-message"></div>
+
+    <div style="display:flex;gap:10px;margin-top:20px;">
+
+      <button class="btn btn-outline"
+              onclick="closeModal('confirm-modal')"
+              style="flex:1;">
+        Cancel
+      </button>
+
+      <button id="confirm-action-btn"
+              class="btn btn-danger"
+              style="flex:1;"
+              onclick="executeConfirmAction()">
+        Confirm
+      </button>
+
+    </div>
+
+  </div>
+</div>
+
+
+<!-- Edit Store Modal -->
+<div id="edit-store-modal"
+     class="modal-overlay hidden"
+     onclick="closeModalOutside(event,'edit-store-modal')">
+
+  <div class="modal">
+
+    <div class="modal-title">
+      <span>Edit Store</span>
+
+      <button class="modal-close"
+              onclick="closeModal('edit-store-modal')">
+        ✕
+      </button>
+    </div>
+
+    <div id="edit-store-alert"></div>
+
+    <input type="hidden" id="edit-store-id">
+
+    <form onsubmit="updateStore(event)">
+
+      <div class="form-group">
+        <label class="form-label">Store Name</label>
+        <input type="text"
+               id="edit-store-name"
+               class="form-control"
+               required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Store Address</label>
+        <input type="text"
+               id="edit-store-address"
+               class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Owner Username</label>
+        <input type="text"
+               id="edit-owner-username"
+               class="form-control"
+               required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          New Password
+        </label>
+
+        <input type="password"
+               id="edit-owner-password"
+               class="form-control"
+               placeholder="Leave blank to keep current password">
+              
+      </div>
+
+      <div style="display:flex;gap:10px;">
+
+        <button type="button"
+                class="btn btn-outline"
+                onclick="closeModal('edit-store-modal')"
+                style="flex:1;">
+          Cancel
+        </button>
+
+        <button type="submit"
+                class="btn btn-primary"
+                style="flex:1;">
+          Save Changes
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+</body>
+
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Admin Login — WorkerReview</title>
+  <link rel="stylesheet" href="css/style.css">
+      <link rel="stylesheet" href="css/black-red-theme-override.css"/></head>
+
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-circle">🔧</div>
+      <h1 class="auth-title">Admin Login</h1>
+      <p class="auth-subtitle">Application administrator access</p>
+    </div>
+    <div id="alert-area"></div>
+    <form onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" id="username" class="form-control" placeholder="admin" required autocomplete="username"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="password" class="form-control" placeholder="Enter admin password" required autocomplete="current-password"/>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">Sign In as Admin</button>
+    </form>
+    <p style="text-align:center;margin-top:20px;font-size:.85rem;color:var(--gray-500);">
+      <a href="index.html" style="color:var(--primary);">← Back to Home</a>
+    </p>
+  </div>
+</div>
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script>
+  if (localStorage.getItem('adminToken')) window.location.href = 'admin-dashboard.html';
+
+  async function handleLogin(e) {
+    e.preventDefault();
+    const btn  = document.getElementById('login-btn');
+    const area = document.getElementById('alert-area');
+    area.innerHTML = '';
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+
+    if (!username || !password) {
+      area.innerHTML = `<div class="alert alert-danger">Please enter both username and password.</div>`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Signing in...';
+
+    try {
+      const res  = await fetch(`${API_BASE}/admin/login`, {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        area.innerHTML = `<div class="alert alert-danger">${escapeHtml(data.error || 'Login failed.')}</div>`;
+        return;
+      }
+
+      localStorage.setItem('adminToken',    data.token);
+      localStorage.setItem('adminUsername', data.username);
+      localStorage.setItem('adminIsSuper',  data.isSuper ? '1' : '0');
+      window.location.href = 'admin-dashboard.html';
+    } catch {
+      area.innerHTML = `<div class="alert alert-danger">Cannot connect to server. Make sure the backend is running.</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Sign In as Admin';
+    }
+  }
+</script>
+</body>
+</html>

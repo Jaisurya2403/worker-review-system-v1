@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Store Dashboard — WorkerReview</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/black-red-theme-override.css"/>
+  <link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="logo-icon"><i class="bi bi-chat-square-text-fill"></i></div>
+    <span id="store-name-nav">My Store</span>
+  </div>
+  <div class="navbar-actions">
+    <span class="badge badge-gray" id="username-display"></span>
+    <div style="position:relative;cursor:pointer;padding:6px 4px;" onclick="toggleNotifPanel()">
+      <span style="font-size:1.5rem;line-height:1;" title="Notifications">🔔</span>
+      <span id="notif-badge"
+        style="display:none;position:absolute;top:-2px;right:-2px;
+               background:#EF4444;color:#fff;border-radius:50%;
+               min-width:18px;height:18px;font-size:.65rem;font-weight:700;
+               align-items:center;justify-content:center;
+               font-family:sans-serif;padding:0 3px;
+               border:2px solid #ba3739;box-shadow:0 0 6px rgba(239,68,68,.6);">0</span>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+  </div>
+  <button id="menuToggle" class="mobile-menu-btn">☰</button>
+</nav>
+
+<!-- Notification Panel -->
+<div id="notif-panel"
+  style="display:none;position:fixed;top:64px;right:0;width:380px;
+         height:calc(100vh - 64px);background:#0c0c0c;
+         box-shadow:-4px 0 24px rgba(0,0,0,.5);z-index:500;
+         flex-direction:column;border-left:1px solid rgba(255,255,255,.08);">
+  <div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08);
+              display:flex;align-items:center;justify-content:space-between;
+              background:#c6434b;flex-shrink:0;">
+    <div>
+      <h3 style="font-size:1rem;font-weight:700;margin:0;color:#0b0b0b;"><i class="bi bi-bell-fill"></i> Notifications</h3>
+      <p id="notif-unread-text" style="font-size:.75rem;color:rgb(0, 0, 0);margin:3px 0 0;"></p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="markAllRead()"
+        style="font-size:.75rem;color:#0f0e10;background:none;border:none;
+               cursor:pointer;font-weight:600;padding:4px 8px;border-radius:6px;">
+        ✓ Mark all read
+      </button>
+      <button onclick="toggleNotifPanel()"
+        style="background:rgba(255,255,255,.1);border:none;font-size:.9rem;
+               cursor:pointer;color:rgba(255,255,255,.7);width:28px;height:28px;
+               border-radius:50%;display:flex;align-items:center;justify-content:center;"><i class="bi bi-x-lg"></i></button>
+    </div>
+  </div>
+  <div id="notif-list" style="flex:1;overflow-y:auto;padding:0;">
+    <div style="text-align:center;padding:40px;color:rgba(255,255,255,.3);">
+      <p style="font-size:.85rem;">Loading...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div id="notif-overlay"
+  style="display:none;position:fixed;inset:0;z-index:499;background:rgba(0,0,0,.4);"
+  onclick="toggleNotifPanel()"></div>
+
+<div id="overlay" class="overlay"></div>
+
+<div class="dashboard-layout">
+  <aside id="sidebar" class="sidebar">
+    <ul class="sidebar-nav">
+      <li><a href="#" class="active" onclick="showTab('overview',this)"><span class="nav-icon"><i class="bi bi-grid-1x2-fill"></i></span> Overview</a></li>
+      <li><a href="#" onclick="showTab('workers',this)"><span class="nav-icon"><i class="bi bi-people-fill"></i></span> Workers</a></li>
+      <li><a href="#" onclick="showTab('reviews',this)"><span class="nav-icon"><i class="bi bi-chat-left-text-fill"></i>
+</span> Reviews</a></li>
+<li><a href="#" onclick="showTab('analytics',this)">
+  <span class="nav-icon"><i class="bi bi-graph-up-arrow"></i></span> Analytics
+</a></li>
+      <li><a href="#" onclick="showTab('qr',this)"><span class="nav-icon"><i class="bi bi-qr-code-scan"></i></span> QR Code</a></li>
+    </ul>
+  </aside>
+
+  <main class="main-content">
+
+    <div id="alert-area"></div>
+<!-- ANALYTICS TAB -->
+<div id="tab-analytics" class="hidden">
+
+  <div class="page-header">
+    <div>
+      <h1 class="page-title"><i class="bi bi-graph-up-arrow"></i> Advanced Analytics</h1>
+      <p class="page-subtitle">Deep insights into your store performance</p>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="loadAnalytics()">
+      <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+  </div>
+
+  <div id="analytics-loading" style="text-align:center;padding:60px;">
+    <div class="spinner spinner-dark" style="width:40px;height:40px;margin:0 auto 12px;"></div>
+    <p style="color:var(--gray-500);">Loading analytics...</p>
+  </div>
+
+  <div id="analytics-content" class="hidden">
+
+    <!-- ── KPI CARDS ── -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px;" id="kpi-grid">
+      <!-- filled by JS -->
+    </div>
+
+    <!-- ── ROW: Leaderboard + Worker Matrix ── -->
+    <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:20px;margin-bottom:24px;">
+
+      <!-- Leaderboard -->
+      <div class="card">
+        <div class="card-title"><i class="bi bi-trophy-fill" style="color:#F59E0B;"></i> Worker Leaderboard</div>
+        <div id="leaderboard-content"></div>
+      </div>
+
+      <!-- Worker Matrix -->
+      <div class="card">
+        <div class="card-title"><i class="bi bi-table"></i> Worker Performance Matrix</div>
+        <div class="table-wrapper" id="worker-matrix-content"></div>
+      </div>
+
+    </div>
+
+    <!-- ── ROW: Daily Trend + Rating Distribution ── -->
+    <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:20px;margin-bottom:24px;">
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div class="card-title" style="margin:0;"><i class="bi bi-bar-chart-line-fill"></i> Daily Review Trend</div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm btn-outline" onclick="switchTrend('daily')" id="btn-daily" style="padding:4px 10px;font-size:.75rem;">Daily</button>
+            <button class="btn btn-sm btn-outline" onclick="switchTrend('weekly')" id="btn-weekly" style="padding:4px 10px;font-size:.75rem;">Weekly</button>
+          </div>
+        </div>
+        <div class="chart-wrapper" style="height:240px;"><canvas id="trendChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="bi bi-star-half"></i> Rating Distribution</div>
+        <div id="rating-dist-content"></div>
+      </div>
+
+    </div>
+
+    <!-- ── ROW: Satisfaction Trend + Worker Comparison ── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+
+      <div class="card">
+        <div class="card-title"><i class="bi bi-emoji-smile-fill" style="color:#22C55E;"></i> Satisfaction Trend</div>
+        <div class="chart-wrapper" style="height:200px;"><canvas id="satisfactionChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="bi bi-people-fill"></i> Worker Comparison</div>
+        <div class="chart-wrapper" style="height:200px;"><canvas id="workerCompareChart"></canvas></div>
+      </div>
+
+    </div>
+
+    <!-- ── ROW: Heatmap ── -->
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-title"><i class="bi bi-grid-3x3-gap-fill"></i> Review Activity Heatmap</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <div>
+          <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:10px;">By Day of Week</p>
+          <div id="weekday-heatmap"></div>
+        </div>
+        <div>
+          <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:10px;">By Hour of Day</p>
+          <div id="hourly-heatmap"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ROW: AI Insights + Forecast ── -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+
+      <div class="card">
+        <div class="card-title"><i class="bi bi-lightbulb-fill" style="color:#F59E0B;"></i> AI Insights</div>
+        <div id="ai-insights-content"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="bi bi-graph-up" style="color:#6C47FF;"></i> Forecast & Predictions</div>
+        <div id="forecast-content"></div>
+      </div>
+
+    </div>
+
+    <!-- ── Management Summary ── -->
+    <div class="card" id="summary-card" style="margin-bottom:24px;">
+      <div class="card-title"><i class="bi bi-clipboard2-data-fill"></i> Management Summary</div>
+      <div id="summary-content"></div>
+    </div>
+
+  </div><!-- end analytics-content -->
+</div><!-- end tab-analytics -->
+
+
+    
+
+    <!-- OVERVIEW TAB -->
+    <div id="tab-overview">
+      <div class="page-header">
+        <div><h1 class="page-title">Dashboard Overview</h1><p class="page-subtitle">Review performance for your store</p></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon"><i class="bi bi-chat-left-text-fill"></i></div><div class="stat-value" id="stat-total">—</div><div class="stat-label">Total Reviews</div></div>
+        <div class="stat-card info"><div class="stat-icon"><i class="bi bi-grid-1x2-fill"></i></div><div class="stat-value" id="stat-today">—</div><div class="stat-label">Today's Reviews</div></div>
+        <div class="stat-card primary"><div class="stat-icon"><i class="bi bi-hand-thumbs-up-fill"></i></div><div class="stat-value" id="stat-good">—</div><div class="stat-label">Good Reviews</div></div>
+        <div class="stat-card primary"><div class="stat-icon"><i class="bi bi-hand-thumbs-down-fill"></i></div><div class="stat-value" id="stat-bad">—</div><div class="stat-label">Bad Reviews</div></div>
+        <div class="stat-card info"><div class="stat-icon"><i class="bi bi-star-fill"></i></div><div class="stat-value" id="stat-avg">—</div><div class="stat-label">Avg Rating</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+        <div class="card"><div class="card-title"><i class="bi bi-trophy-fill"></i> Best Performer</div><div id="best-worker-content"><p class="text-muted" style="font-size:.9rem;">No data yet.</p></div></div>
+        <div class="card"><div class="card-title"><i class="bi bi-graph-down-arrow"></i> Needs Improvement</div><div id="improve-worker-content"><p class="text-muted" style="font-size:.9rem;">No data yet.</p></div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="card"><div class="card-title">Reviews Breakdown</div><div class="chart-wrapper"><canvas id="pieChart"></canvas></div></div>
+        <div class="card"><div class="card-title">Monthly Trend</div><div class="chart-wrapper"><canvas id="lineChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- WORKERS TAB -->
+    <div id="tab-workers" class="hidden">
+      <div class="page-header">
+        <div><h1 class="page-title">Team Members</h1><p class="page-subtitle">Manage your workers</p></div>
+        <button class="btn btn-primary" onclick="openAddWorkerModal()">+ Add Worker</button>
+      </div>
+      <div class="card"><div id="workers-list"><div class="loading-state"><div class="spinner spinner-dark"></div><p>Loading...</p></div></div></div>
+    </div>
+
+    <!-- REVIEWS TAB -->
+    <div id="tab-reviews" class="hidden">
+      <div class="page-header"><h1 class="page-title">Customer Reviews</h1></div>
+      <div class="filter-bar">
+        <select id="filter-worker" onchange="loadReviews()"><option value="">All Workers</option></select>
+        <select id="filter-type" onchange="loadReviews()"><option value="">All Types</option><option value="good"><i class="bi bi-hand-thumbs-up-fill"></i> Good</option><option value="bad"><i class="bi bi-hand-thumbs-down-fill"></i> Bad</option></select>
+        <select id="filter-rating" onchange="loadReviews()">
+          <option value="">All Ratings</option>
+          <option value="5">⭐⭐⭐⭐⭐ 5</option><option value="4">⭐⭐⭐⭐ 4</option>
+          <option value="3">⭐⭐⭐ 3</option><option value="2">⭐⭐ 2</option><option value="1">⭐ 1</option>
+        </select>
+        <input type="date" id="filter-from" onchange="loadReviews()" title="From date"/>
+        <input type="date" id="filter-to" onchange="loadReviews()" title="To date"/>
+        <button class="btn btn-outline btn-sm" onclick="clearFilters()">Clear</button>
+      </div>
+      <div class="card">
+        <div id="reviews-list"><div class="loading-state"><div class="spinner spinner-dark"></div><p>Loading...</p></div></div>
+        <div id="reviews-pagination" style="text-align:center;padding-top:16px;"></div>
+      </div>
+    </div>
+
+    <!-- QR TAB -->
+    <div id="tab-qr" class="hidden">
+      <div class="page-header"><h1 class="page-title">Your QR Code</h1></div>
+      <div class="card" style="max-width:420px;">
+        <p style="color:var(--gray-500);font-size:.9rem;margin-bottom:20px;">Print this QR code and place it at your store.</p>
+        <div id="qr-display" style="text-align:center;padding:16px;"><div class="loading-state"><div class="spinner spinner-dark"></div></div></div>
+        <div style="margin-top:16px;" id="qr-url-display"></div>
+        <button class="btn btn-primary mt-2" onclick="printQR()"><i class="bi bi-printer"></i> Print QR Code</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Worker Modal -->
+<div id="worker-modal" class="modal-overlay hidden" onclick="closeModalOutside(event,'worker-modal')">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">Add Worker</span>
+      <button class="modal-close" onclick="closeModal('worker-modal')">✕</button>
+    </div>
+    <div id="modal-alert"></div>
+    <form id="worker-form" onsubmit="saveWorker(event)">
+      <input type="hidden" id="edit-worker-id"/>
+      <div class="form-group">
+        <label class="form-label">Profile Photo</label>
+        <label class="upload-label">
+          <div class="upload-placeholder" id="upload-placeholder">
+            <span class="up-icon"><i class="bi bi-camera"></i></span><span>Upload Photo</span>
+          </div>
+          <img id="image-preview-img" class="image-preview" style="display:none;" src="" alt="Preview"/>
+          <div style="margin-left:14px;">
+            <p style="font-size:.85rem;font-weight:600;">Choose photo</p>
+            <p style="font-size:.78rem;color:var(--gray-500);">JPG, PNG up to 5MB</p>
+          </div>
+          <input type="file" id="worker-image" accept="image/*" style="display:none;" onchange="previewImage(event)"/>
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Worker Name *</label>
+        <input type="text" id="worker-name" class="form-control" placeholder="Full name" required maxlength="200"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Role / Position</label>
+        <input type="text" id="worker-role" class="form-control" placeholder="e.g. Cashier, Manager, Chef" maxlength="200"/>
+      </div>
+      <div class="form-group" id="status-group" style="display:none;">
+        <label class="form-label">Status</label>
+        <select id="worker-status" class="form-control">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('worker-modal')" style="flex:1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="save-worker-btn" style="flex:1;">Save Worker</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+window.addEventListener('load', function () {
+  const menuBtn = document.getElementById('menuToggle');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  if (menuBtn && sidebar && overlay) {
+    menuBtn.addEventListener('click', function () {
+      sidebar.classList.toggle('active');
+      overlay.classList.toggle('active');
+    });
+    overlay.addEventListener('click', function () {
+      sidebar.classList.remove('active');
+      overlay.classList.remove('active');
+    });
+    document.querySelectorAll('.sidebar a').forEach(link => {
+      link.addEventListener('click', function () {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('active');
+      });
+    });
+  }
+});
+</script>
+
+
+<!-- Confirm Action Modal -->
+<div id="confirm-modal"
+     class="modal-overlay hidden"
+     onclick="closeModalOutside(event,'confirm-modal')">
+
+  <div class="modal" style="max-width:500px;">
+
+    <div class="modal-title">
+      <span id="confirm-title">Confirm Action</span>
+
+      <button class="modal-close"
+              onclick="closeModal('confirm-modal')">
+        ✕
+      </button>
+    </div>
+
+    <div id="confirm-message"></div>
+
+    <div style="display:flex;gap:10px;margin-top:20px;">
+
+      <button class="btn btn-outline"
+              onclick="closeModal('confirm-modal')"
+              style="flex:1;">
+        Cancel
+      </button>
+
+      <button id="confirm-action-btn"
+              class="btn btn-danger"
+              style="flex:1;"
+              onclick="executeConfirmAction()">
+        Delete
+      </button>
+
+    </div>
+
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/store.js"></script>
+</body>
+</html>
